@@ -76,9 +76,24 @@ GET /api/parking-tickets?tag=ABC123
 ```json
 {
   "tag_number": "ABC123",
-  "count": 2,
-  "total_due": "$150.00",
-  "citations": [
+  "summary": {
+    "total_citations": 2,
+    "total_paid": 1,
+    "total_open": 1,
+    "total_due": "$150.00"
+  },
+  "paid_citations": [
+    {
+      "Citation": "123456789",
+      "Date Issued": "01/15/2024",
+      "Status": "PAID",
+      "Amount Due": "$0.00",
+      "needs_payment": false,
+      "payment_required": "$0.00",
+      "due_date": "02/15/2024"
+    }
+  ],
+  "open_citations": [
     {
       "Citation": "123456789",
       "Date Issued": "01/15/2024",

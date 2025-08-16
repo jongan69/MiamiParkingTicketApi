@@ -190,21 +190,21 @@ def parse_citation_details(soup: BeautifulSoup, citation_number: str) -> dict:
         "lb_State": "state",
         
         # Date and amount information
-        "lb_IssueDate": "issue_date",
-        "lb_AmountDueNow": "amount_due_now",
-        "lb_DueDate": "due_date", 
-        "lb_AmountDueAfterDueDate": "amount_due_after_due_date",
+        "lb_IssueDateTime": "issue_date_time",
+        "lb_amountdue": "amount_due_now",
+        "lb_duedate": "due_date", 
+        "lb_amountdueafter": "amount_due_after_due_date",
         "lb_Status": "status",
         
         # Violation information
         "lb_Violation": "violation_type",
         "lb_location": "location",
-        "lb_Municipality": "municipality",
+        "lb_municipality": "municipality",
         
         # Vehicle details
-        "lb_Make": "vehicle_make",
-        "lb_Style": "vehicle_style", 
-        "lb_Color": "vehicle_color",
+        "lb_carmake": "vehicle_make",
+        "lb_carstyle": "vehicle_style", 
+        "lb_color": "vehicle_color",
     }
     
     # Optimize element search with more efficient selectors
@@ -226,6 +226,8 @@ def parse_citation_details(soup: BeautifulSoup, citation_number: str) -> dict:
                     # Clean up the key name
                     clean_key = key.lower().replace(' ', '_').replace('/', '_').replace('&', 'and')
                     details[f"table_{clean_key}"] = value
+    
+
     
     return details
 
@@ -316,6 +318,11 @@ def fetch_citation_details_worker(args):
                 else:
                     cleaned_details[key] = value
             citation_info.update(cleaned_details)
+            
+            # Ensure due_date is properly included
+            if 'due_date' not in citation_info:
+                citation_info['due_date'] = "Not available"
+                citation_info['due_date_estimated'] = False
         
         return citation_info
     except Exception as e:
@@ -328,6 +335,8 @@ def fetch_citation_details_worker(args):
             "Amount Due": amount_due,
             "needs_payment": status == "OPEN",
             "payment_required": amount_due if status == "OPEN" else "$0.00",
+            "due_date": "Not available",
+            "due_date_estimated": False,
             "error": str(e)
         }
 
@@ -370,9 +379,14 @@ def fetch_all_citations(tag_number: str) -> dict:
             msg = soup.select_one("#lblErrorTag")
             return {
                 "tag_number": tag_number.strip().upper(),
-                "count": 0,
-                "total_due": None,
-                "citations": [],
+                "summary": {
+                    "total_citations": 0,
+                    "total_paid": 0,
+                    "total_open": 0,
+                    "total_due": None
+                },
+                "paid_citations": [],
+                "open_citations": [],
                 "message": msg.get_text(strip=True) if msg else "No results table found."
             }
 
@@ -388,9 +402,14 @@ def fetch_all_citations(tag_number: str) -> dict:
         if len(rows) == 0:
             return {
                 "tag_number": tag_number.strip().upper(),
-                "count": 0,
-                "total_due": total_due,
-                "citations": []
+                "summary": {
+                    "total_citations": 0,
+                    "total_paid": 0,
+                    "total_open": 0,
+                    "total_due": total_due
+                },
+                "paid_citations": [],
+                "open_citations": []
             }
         
         # Use concurrent requests for better performance
@@ -432,11 +451,24 @@ def fetch_all_citations(tag_number: str) -> dict:
         # Sort citations by citation number to maintain consistent order
         citations.sort(key=lambda x: x.get("Citation", ""))
 
+        # Separate citations into paid and open
+        paid_citations = [citation for citation in citations if not citation.get("needs_payment", False)]
+        open_citations = [citation for citation in citations if citation.get("needs_payment", False)]
+
+        # Calculate totals
+        total_open = len(open_citations)
+        total_paid = len(paid_citations)
+
         return {
             "tag_number": tag_number.strip().upper(),
-            "count": len(citations),
-            "total_due": total_due,
-            "citations": citations
+            "summary": {
+                "total_citations": len(citations),
+                "total_paid": total_paid,
+                "total_open": total_open,
+                "total_due": total_due
+            },
+            "paid_citations": paid_citations,
+            "open_citations": open_citations
         }
     except Exception as e:
         print(f"Error in fetch_all_citations: {e}")
