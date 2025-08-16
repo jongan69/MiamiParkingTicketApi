@@ -104,4 +104,3 @@ The API includes built-in delays between requests to be respectful to the Miami-
 ## License
 
 This project is for educational purposes. Please respect the terms of service of the Miami-Dade Clerk's website.
-# MiamiParkingTicketApi
