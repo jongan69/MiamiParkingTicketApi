@@ -17,6 +17,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 import threading
+import os
 
 app = Flask(__name__)
 
@@ -517,12 +518,24 @@ if __name__ == "__main__":
             print("Example: http://localhost:3000/api/parking-tickets?tag=ABC123")
             print("Press Ctrl+C to stop the server")
             
-            # Add some basic error handling for Flask
-            app.config['DEBUG'] = True
-            app.config['TESTING'] = False
+            # Check if this is production or development
+            is_production = os.environ.get('FLASK_ENV') == 'production'
             
-            # Start the server with more verbose output
-            app.run(debug=True, host='0.0.0.0', port=3000, use_reloader=False)
+            if is_production:
+                print("Running in PRODUCTION mode")
+                # Production settings
+                app.config['DEBUG'] = False
+                app.config['TESTING'] = False
+                # Use gunicorn or other WSGI server in production
+                print("For production, use: gunicorn -w 4 -b 0.0.0.0:3000 wsgi:app")
+            else:
+                print("Running in DEVELOPMENT mode")
+                # Development settings
+                app.config['DEBUG'] = True
+                app.config['TESTING'] = False
+            
+            # Start the server
+            app.run(debug=not is_production, host='0.0.0.0', port=3000, use_reloader=False)
         except Exception as e:
             print(f"Error starting Flask server: {e}")
             import traceback
